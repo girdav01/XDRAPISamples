@@ -7,7 +7,7 @@ Do not share your api keys in public github
 # Get your token from your XDR Administrator, in XDR Console under Account Management.
 # You can also use the key for Splunk integration in XDr under Alert Notifications, it will work for most
 xdr_token = ''
-
+zone ='us'
 '''
 Region            FQDN
 United States     api.xdr.trendmicro.com
