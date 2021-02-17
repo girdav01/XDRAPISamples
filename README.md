@@ -1,4 +1,4 @@
-# XDRAPISamples
+# XDRAPISamples or Vision One samples
 Sample code using Trend Micro XDR Automation API
 
 XDR API is here :  https://automation.trendmicro.com/xdr/home
