@@ -2,7 +2,7 @@
 # for more up to date documentation go to https://automation.trendmicro.com/xdr/home
 # Tested with XDR V2.0 API D. Girard, Trend Micro XDR Product Manager Team, February 14th 2021
 import argparse
-import tmconfig # This is where
+import tmconfig # This is where you have your API Token and your hosting zone (US by default)
 import TMVisionOne
 
 
@@ -21,7 +21,11 @@ def main():
         args = par.parse_args()
 
         # use zone (ex: 'us') and xdr_token (API Key) from tmconfig or hardcode it here
-        x = TMVisionOne.XDR(tmconfig.zone, tmconfig.xdr_token)
+        # par.prog is equivalent to sys.argv[0] and it is the script name. We pass it as a parameter to identify
+        # who call the API's. It is a good practice to identify your app through User-Agent.
+        # You can also pass any string
+        #tmconfig.zone
+        x = TMVisionOne.XDR(tmconfig.zone, tmconfig.xdr_token, par.prog)
         print(x.listResponseTask())
         print(x.getResponseTaskDetails('00000099'))
         print(x.getDownloadInfo('00000099'))
