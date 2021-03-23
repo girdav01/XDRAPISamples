@@ -1,102 +1,14 @@
 # for more up to date documentation go to https://automation.trendmicro.com/xdr/home
 # Tested with XDR V2.0 API, Trend Micro XDR Product Manager Team, November 2020
-import argparse
-import requests
-import json
+# Programmer:  D. Girard, Trend Micro XDR Product Manager Team, March 22nd 2021
+
+import argparse  # for the script arguments
+# import pandas as pd   # mainly for CSV flatening and export. TBD
+import json      #
 import tmconfig  # tmconfig.py with your api keys / token
-from datetime import datetime, timedelta
-import time
-
-url_base = tmconfig.region['us'] # use the right region
-token = tmconfig.xdr_token # get your account API token
-
-header = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json;charset=utf-8'}
-
-dl = {'edr': 'endpointActivityData', 'msg': 'messageActivityData',
-          'det': 'detections', 'net': 'networkActivityData'}
-
-def convert_epochTodate(epoc):
-    #Used to convert Suspicious Objects date-time in Epoc format to Human understandable dates
-    #time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.localtime(1493286710))
-    #Thu, 27 Apr 2017 05:51:50 +0000
-    human_date = time.strftime("%b %d %Y %H:%M:%S", time.localtime(epoc))
-    return human_date
-
-def convert_DateToEpoc(human):
-    #Used to convert normal date-te into Epoc format
-    #int(time.mktime(time.strptime('2000-01-01 12:34:00', '%Y-%m-%d %H:%M:%S'))) - time.timezone
-    epoch = int(time.mktime(time.strptime(human, '%Y-%m-%d %H:%M:%S'))) - time.timezone
-    return epoch
-
-
-# wrapper for XDR get requests
-def callgetapi(url_path, query_params):
-    try:
-        r = requests.get(url_base + url_path, params=query_params, headers=header)
-        # print(r.status_code)
-        if r.status_code != 200:
-            raise Exception(str(r.status_code) + "  " + r.text)
-
-        if 'application/json' in r.headers.get('Content-Type', ''):
-            return json.dumps(r.json(), indent=4)
-        else:
-            return r.text
-
-    except Exception as err:
-        print("callgetapi : " + str(err))
-        exit(-1)
-
-
-# wrapper for XDR post requests
-def callpostapi(url_path, query_params, body):
-    try:
-        r = requests.post(url_base + url_path, params=query_params, headers=header, data=body)
-        if r.status_code != 200:
-            raise Exception(str(r.status_code) + "  " + r.text)
-
-        if 'application/json' in r.headers.get('Content-Type', ''):
-            return json.dumps(r.json(), indent=4)
-        else:
-            return r.text
-
-    except Exception as err:
-        print("callpostapi : " + str(err))
-        exit(-1)
-
-
-# Get a workbench detail
-def search(ifrom, ito, source, query):
-    try:
-        url_path = '/v2.0/xdr/search/data'
-        query_params = {}
-        body = {
-            "from": ifrom,
-            "to": ito,
-            "source": source,
-            "query": query
-            }
-        b = json.dumps(body)
-        return callpostapi(url_path, query_params, b)
-
-    except Exception as err:
-        print("search : " + source + '   ' + query + " " + str(err))
-        exit(-1)
-
-
-def return_iso_dates(daystosubstract):
-    try:
-        days_to_substract = daystosubstract
-        my_date = datetime.now() - timedelta(days=days_to_substract)
-        my_date = my_date.strftime("%Y-%m-%d %H:%M:%S")
-        istart = convert_DateToEpoc(my_date)
-        my_end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        iEnd = convert_DateToEpoc(my_end)
-        return istart, iEnd
-
-    except Exception as err:
-        print("return_iso_dates : " + str(daystosubstract) + '   ' + str(err))
-        exit(-1)
-
+import TMVisionOne  #Trend Micro Vision One/XDR API wrapper class
+import time # for timing our script execution
+from datetime import datetime, timedelta  # to calculate date and time range of the search
 
 
 def optionparse():
@@ -106,27 +18,87 @@ def optionparse():
     opts.add_argument('-d', '--days', help='Days of logs', default=1)
     opts.add_argument('-l', '--datalake', help='Data Lake to query: edr, msg, net, det', default='edr')
     opts.add_argument('-q', '--query', help='XDR search query')
+    opts.add_argument('-t', '--output_type', default='json', help='output to json or csv')
+    opts.add_argument('-f', '--filename', help='file name for the output')
     parsed_args = opts.parse_args()
     return parsed_args
 
+# used to validate our exported data file
+def validate_json(filepath):
+    try:
+        with open(filepath, 'r', encoding="utf-8") as f:
+            json_obj = json.load(f)
+            f.close()
+        print(f"{filepath} is a valid JSON file")
+    except ValueError as e:
+        print(f"{filepath} Not a valid JSON file.  {e}")
+
+    finally:
+        f.close()
+
 
 def main(args):
+    try:
+        if args.query:
+            begin = time.time()
+            x = TMVisionOne.XDR(tmconfig.zone, tmconfig.xdr_token, "Trend Micro Vision One Search Script Sample")
+            my_date = datetime.now() - timedelta(days=int(args.days))
+            istart = x.convert_DateToEpoc(str(my_date.replace(microsecond=0)))
+            iEnd = x.convert_DateToEpoc(str(datetime.today().replace(microsecond=0)))
+            ret = x.search(istart, iEnd, args.datalake, args.query)
+            js =json.loads(ret)
+            #p0 = pd.read_json(json.dumps(js['data']['logs']))
+            print("*********STARTING*******************")
+            total_cnt = js['data']['total_count']
 
-    if args.query:
-        my_date = datetime.now() - timedelta(days=int(args.days))
-        istart = convert_DateToEpoc(str(my_date.replace(microsecond=0)))
-        iEnd = convert_DateToEpoc(str(datetime.today().replace(microsecond=0)))
-        ret = search(istart, iEnd, dl[args.datalake], args.query)
-        print(ret)
-    else:
-        print("No query supplied, example -q 'hostName:globalnetworkissues.com OR objectIps:(204.188.205.176 OR 5.252.177.25)'")
+            print(f"Data Source : {x.dlake[args.datalake]}")
+            print(f"Period from : {my_date} to {datetime.now()}")
+            print(f"Query       : {args.query}")
+            print(f"Found       : {total_cnt}  hits")
+            if total_cnt > 0:
+                result = list()
+                if args.filename:
+                    filename = args.filename
+                else:
+                    filename = "query_results_" + datetime.now().strftime("%Y-%m-%dT%H-%M") + ".json"
+                print(f"Records saved to : {filename}")
+                js1 = js['data']['logs']
+                result.append(js1)
+                page_cnt = round(int(total_cnt)/500)
+                pages = str(page_cnt)
+                for i in range(page_cnt):
+                    p = i + 1
+                    print(f"Page {p} of {pages}")
+                    offset = (p*500)
+                    if offset > total_cnt:
+                        break
 
+                    ret = x.search(istart, iEnd, args.datalake, args.query, offset)
+                    js2 = json.loads(ret)
+                    js3=js2['data']['logs']
+                    result.append(js3)
+                with open(filename, 'w', encoding="utf-8") as f1:
+                    json.dump(result, f1,indent=4)
+                    f1.close()
+                validate_json(filename)
+            end = time.time()
+            print(f"Total runtime of the program is {round(end - begin, 2)} seconds")
+            print("*********Program ended without problems**********")
+        else:
+            print("No query supplied, example -q 'hostName:globalnetworkissues.com OR objectIps:(204.188.205.176 OR 5.252.177.25)'")
+
+    except Exception as err:
+        print(f"main : {err}")
+        exit(-1)
 
 
 if __name__ == '__main__':
-    # tested arguments in my lab :  -d 7 -q "hostName:globalnetworkissues.com OR objectIps:(204.188.205.176 OR 5.252.177.25)"
+    # tested arguments in my lab :  -d 7 -q "hostName:globalnetworkissues.com OR objectIps:(204.188.205.176 OR 5.252.177.25)
+    #validate_son("query_results_2021-03-22T22-09.json")
     args = optionparse()
-    print('Welcome to Trend Micro XDR Hunting script')
+    print('Welcome to Trend Micro Vision One Search script')
+    print("Example :")
+    print("XDRHunt.py  -d 7 -l edr -q 'hostName:globalnetworkissues.com OR objectIps:(204.188.205.176 OR 5.252.177.25)'")
     main(args)
 
 
