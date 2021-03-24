@@ -15,9 +15,9 @@ def optionparse():
     """Argument Parser."""
     opts = argparse.ArgumentParser(description='XDR Hunting Script',
                                    formatter_class=argparse.RawTextHelpFormatter)
-    opts.add_argument('-d', '--days', help='Days of logs', default=1)
-    opts.add_argument('-h', '--hours', help='Hours of logs', default=1)
-    opts.add_argument('-m', '--minutes', help='minutes of logs', default=10)
+    opts.add_argument('-d', '--days', help='Days of logs')
+    opts.add_argument('-H', '--hours', help='Hours of logs')
+    opts.add_argument('-m', '--minutes', help='minutes of logs')
     opts.add_argument('-l', '--datalake', help='Data Lake to query: edr, msg, net, det', default='edr')
     opts.add_argument('-q', '--query', help='XDR search query')
     opts.add_argument('-t', '--output_type', default='json', help='output to json or csv')
