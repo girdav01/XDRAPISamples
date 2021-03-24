@@ -459,7 +459,7 @@ class XDR:
                 "query": query
                 }
             b = json.dumps(body)
-            print(b)
+            #print(b)
             return self.callpostapi(url_path, query_params, b)
 
         except Exception as err:
