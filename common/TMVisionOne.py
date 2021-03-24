@@ -51,7 +51,7 @@ class XDR:
         try:
             base = self.url_base
             r = requests.get(base + url_path, params=query_params, headers=self.header)
-            print(r.status_code)
+            # print(r.status_code)
             if r.status_code != 200:
                 raise Exception(str(r.status_code) + "  " + r.text)
             if 'application/json' in r.headers.get('Content-Type', ''):
@@ -487,13 +487,20 @@ class XDR:
             raise err
 
 
-    def getOAT(self, start, end, size=200, riskLevel=["undefined", "info", "low", "medium", "high", "critical"]):
+    def getOAT(self, start, end, size=200, riskLevel=["undefined", "info", "low", "medium", "high", "critical"],
+               endpointName="", tacticIds=[],techniqueIds=[], filterNames=[], nextBatchToken="" ):
         try:
             url_path = '/v2.0/xdr/oat/detections'
             query_params = {'end': end,
                             'size': size,
-                            'start': start}
-            print(query_params)
+                            'start': start,
+                            'riskLevels': riskLevel,
+                            'endpointName': endpointName,
+                            'tacticIds': tacticIds,
+                            'techniqueIds': techniqueIds,
+                            'filterNames': filterNames,
+                            'nextBatchToken': nextBatchToken}
+            #print(query_params)
             return self.callapi(url_path, query_params)
 
         except Exception as err:
