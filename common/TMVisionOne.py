@@ -250,7 +250,7 @@ class XDR:
             tasks = json.loads(self.listResponseTask())
             task_exist = False
             for t in tasks['data']:
-                if t['actionId'] == task and t['taskStatus'] =="Success":
+                if t['actionId'] == task and t['taskStatus'] =="success":
                     task_exist = True
                     break
                 elif t['actionId'] == task and t['taskStatus'] == "failed":
