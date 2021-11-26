@@ -71,6 +71,7 @@ class XDR:
         try:
             base=self.url_base
             r = requests.post(base + url_path, params=query_params, headers=self.header, data=body)
+            # requests.post
             if r.status_code != 200:
                 raise Exception(str(r.status_code) + "  " + r.text)
             if 'application/json' in r.headers.get('Content-Type', ''):
@@ -343,18 +344,18 @@ class XDR:
             logging.error(msg)
             raise err
 
-    # in beta in US region only
+
     # Create a Webhook
-    def createHook(self, urlhook, evtype="workbench"):
+    def createHook(self, urlhook, evtype="workbench", data={}, checkCert=False, genClientCert=False):
         try:
             url_path = '/v2.0/xdr/portal/notifications/webhooks'
             query_params = {}
             data = {
                 "url": urlhook,
                 "eventType": evtype,
-                "headerData": {},
-                "isVerifyingCertificate": False,
-                "isGeneratingClientCert": False
+                "headerData": data,
+                "isVerifyingCertificate": checkCert,
+                "isGeneratingClientCert": genClientCert
             }
             body = json.dumps(data)
             print(body)
@@ -367,7 +368,6 @@ class XDR:
             logging.error(msg)
             raise err
 
-    # in beta in US region only
     # List the registered Webhooks
     def queryHooks(self):
         try:
@@ -383,9 +383,8 @@ class XDR:
             logging.error(msg)
             raise err
 
-    # in beta in US region only
     # Update a Webhook information
-    def updateHook(self, id, data={}):
+    def updateHook(self, id, data={}, checkCert=False, genClientCert=False):
         try:
             url_path = '/v2.0/xdr/portal/notifications/webhooks/{webhook_id}'
             url_path = url_path.format(**{'webhook_id': id})
@@ -393,8 +392,8 @@ class XDR:
             query_params = {}
             data = {
                 "headerData": data,
-                "isVerifyingCertificate": False,
-                "isGeneratingClientCert": False
+                "isVerifyingCertificate": checkCert,
+                "isGeneratingClientCert": genClientCert
             }
             body = json.dumps(data)
             print(body)
@@ -407,7 +406,6 @@ class XDR:
             logging.error(msg)
             raise err
 
-    # in beta in US region only
     # Delete a Webhook
     def deleteHook(self, id):
         try:
@@ -422,7 +420,8 @@ class XDR:
             logging.error(msg)
             raise err
 
-    # in beta in US region only
+
+
     # Test a Webhook
     def triggerHook(self, evType="workbench", evdata={}):
         try:
@@ -459,7 +458,7 @@ class XDR:
                 "query": query
                 }
             b = json.dumps(body)
-            #print(b)
+            print(b)
             return self.callpostapi(url_path, query_params, b)
 
         except Exception as err:
@@ -504,7 +503,171 @@ class XDR:
             return self.callapi(url_path, query_params)
 
         except Exception as err:
-            msg = "collectFile : " + str(err) #+ " risk level: " + + str(riskLevel)
+            msg = "getOAT : " + str(err) #+ " risk level: " + + str(riskLevel)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+
+    def getConnectedSaaSProducts(self):
+        try:
+            url_path = '/v2.0/xdr/portal/connectors/saas'
+            query_params = {}
+            return self.callapi(url_path, query_params)
+
+        except Exception as err:
+            msg = "getConnectedSaaSProducts : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+
+    def submiFileToCloudSandbox(self, suspiciousfile, docpassword, archivepassword):
+        try:
+            url_path = '/beta/xdr/sandbox/file'
+            query_params = {}
+            body = ""
+            return self.callpostapi(url_path, query_params, body)
+
+        except Exception as err:
+            msg = "submiFileToCloudSandbox : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+    def addToBlockList(self, valueType, value,productId="", description=""):
+        # type file_sha1 ip domain url mailbox
+        try:
+            url_path = '/v2.0/xdr/response/block'
+            query_params = {}
+            body = {
+                    "valueType": valueType,
+                    "targetValue": value,
+                    "productId": productId,
+                    "description": description
+                    }
+
+            return self.callpostapi(url_path, query_params, body)
+
+        except Exception as err:
+            msg = "addToBlockList : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+    def removeFromBlockList(self, valueType, value, productId="", description=""):
+        # type file_sha1 ip domain url mailbox
+        try:
+            url_path = '/v2.0/xdr/response/restoreBlock'
+            query_params = {}
+            body = {
+                    "valueType": valueType,
+                    "targetValue": value,
+                    "productId": productId,
+                    "description": description
+                    }
+
+            return self.callpostapi(url_path, query_params, body)
+
+        except Exception as err:
+            msg = "removeFromBlockList : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+    # helper to build a list for addListToBlockList
+    def buildList(self,valueTypeLs=[], valueLs=[], descriptionLs=[]):
+        try:
+            blocklist =[]
+            ilen = len(valueTypeLs)
+            if ilen != len(valueLs):
+                msg = "Values and Value Types must be the same lengh"
+                print(msg)
+                return msg
+            #descriptions are optionals so we handle it differently
+            if ilen != len(descriptionLs):
+                # create a list of the same values
+                if len(descriptionLs)==0:
+                    desc="" #empty
+                else:
+                    desc = descriptionLs[0] # first item replicated
+                descriptionLs = [desc] * ilen
+
+            for i in range(ilen-1):
+                body = {
+                        "valueType": valueTypeLs[i],
+                        "targetValue": valueLs[i],
+                        "description": descriptionLs[i]
+                        }
+                blocklist.append(body)
+
+            return blocklist
+
+        except Exception as err:
+            msg = "buildList : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+
+    # pass python list of value types, values and descriptions
+    def addListToBlockList(self, listToAdd= []):
+        # type file_sha1 ip domain url mailbox
+        try:
+            url_path = '/v2.0/xdr/response/batchBlock'
+            query_params = {}
+            body = {
+                    "items": listToAdd
+                    }
+            return self.callpostapi(url_path, query_params, body)
+
+        except Exception as err:
+            msg = "addListToBlockList : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+
+    def quarantineEmail(self, msgId, mailbox, messageDeliveryTime, productId = 'sca', desc = 'test'):
+        # quarantine an email
+        try:
+            url_path = '/v2.0/xdr/response/quarantineMessage'
+            query_params = {}
+            mb = mailbox
+            mb = mb.replace("'", "\\\'")
+            body = {
+                    "messageId": msgId,
+                    "mailBox": mb,
+                    "messageDeliveryTime":messageDeliveryTime,
+                    "productId": productId,
+                    "description": desc
+                    }
+            body = json.dumps(body)
+            print(body)
+            return self.callpostapi(url_path, query_params, body)
+
+        except Exception as err:
+            msg = "quarantineEmail : " + str(err)
+            print(msg)
+            logging.error(msg)
+            raise err
+
+    def deleteEmail(self, msgId, mailbox, messageDeliveryTime, productId='sca', desc=''):
+        # delete an email
+        try:
+            url_path = '/v2.0/xdr/response/deleteMessage'
+            query_params = {}
+            body = {
+                "messageId": msgId,
+                "mailBox": mailbox,
+                "messageDeliveryTime": messageDeliveryTime,
+                "productId": productId,
+                "description": desc
+            }
+            return self.callpostapi(url_path, query_params, body)
+
+        except Exception as err:
+            msg = "deleteEmail : " + str(err)
             print(msg)
             logging.error(msg)
             raise err
